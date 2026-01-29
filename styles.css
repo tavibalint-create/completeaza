@@ -151,3 +151,5 @@ function fireConfetti(){
     setTimeout(()=> el.remove(), fallDuration + 800);
   }
 }
+.modal.hidden { display: none !important; }
+.hidden { display: none !important; }
