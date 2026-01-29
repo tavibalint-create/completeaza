@@ -1,68 +1,161 @@
-:root{
-  --bg:#fff9f6;
-  --card:#fff;
-  --accent:#ff4d6d;
-  --muted:#666;
-  --shadow: 0 8px 30px rgba(0,0,0,0.06);
-  --radius:14px;
+// Flow & playful behaviors
+const startBtn = document.getElementById('startBtn');
+const steps = Array.from(document.querySelectorAll('[data-step]'));
+const goToStep = stepName => {
+  steps.forEach(s => s.classList.toggle('hidden', s.dataset.step !== stepName));
+};
+const ageButtons = document.querySelectorAll('.option');
+const loveRange = document.getElementById('loveRange');
+const percentVal = document.getElementById('percentVal');
+const toProposal = document.getElementById('toProposal');
+const yesMain = document.getElementById('yesMain');
+const noMain = document.getElementById('noMain');
+const confirmModal = document.getElementById('confirmModal');
+const confirmYes = document.getElementById('confirmYes');
+const confirmNo = document.getElementById('confirmNo');
+const finalReplay = document.getElementById('replay');
+const confettiContainer = document.getElementById('confetti-container');
+
+let yesScale = 1;
+let tries = 0;
+
+// init
+goToStep('intro');
+
+if (startBtn) startBtn.addEventListener('click', ()=> goToStep('age'));
+
+// age buttons -> next
+ageButtons.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    // visual feedback (optional)
+    btn.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration:260 });
+    setTimeout(()=> goToStep('slider'), 260);
+  });
+});
+
+// slider
+if (loveRange && percentVal) {
+  loveRange.addEventListener('input', ()=> {
+    percentVal.textContent = loveRange.value;
+  });
+}
+if (toProposal) toProposal.addEventListener('click', ()=> goToStep('proposal'));
+
+// proposal logic
+function placeInitialProposal(){
+  if (!yesMain || !noMain) return;
+  // put buttons centered but with distinct left positions
+  yesMain.style.transform = `translateY(0) scale(${yesScale})`;
+  yesMain.style.left = '36%';
+  yesMain.style.position = 'absolute';
+  noMain.style.position = 'absolute';
+  noMain.style.left = '64%';
+  noMain.style.top = '50%';
+  noMain.style.transform = 'translate(-50%, -50%)';
+}
+window.addEventListener('load', ()=> {
+  // if user refreshes on this page
+  placeInitialProposal();
+});
+window.addEventListener('resize', placeInitialProposal);
+
+// move "Nu" and grow "Da"
+function moveNoRandom(){
+  if (!noMain) return;
+  const wrap = document.querySelector('.proposal-wrap').getBoundingClientRect();
+  const btnW = noMain.offsetWidth;
+  const btnH = noMain.offsetHeight;
+  const padding = 8;
+  const minX = padding;
+  const maxX = wrap.width - btnW - padding;
+  const minY = -10;
+  const maxY = wrap.height - btnH + 10;
+  const x = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
+  const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
+  noMain.style.left = `${x}px`;
+  noMain.style.top = `${y}px`;
+  // grow yes a little
+  yesScale += 0.08;
+  if (yesMain) yesMain.style.transform = `translateY(0) scale(${yesScale})`;
+  tries++;
 }
 
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
-body{
-  background: linear-gradient(180deg,#fff9f6 0%, #fff1f4 100%);
-  display:flex;align-items:center;justify-content:center;padding:28px;color:#222;
+// when trying to interact with "Nu"
+if (noMain) {
+  noMain.addEventListener('mouseenter', moveNoRandom);
+  noMain.addEventListener('touchstart', e => { e.preventDefault(); moveNoRandom(); });
+
+  // if user somehow clicks "Nu"
+  noMain.addEventListener('click', (e)=>{
+    yesScale += 0.12;
+    if (yesMain) yesMain.style.transform = `translateY(0) scale(${yesScale})`;
+    noMain.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-8px)' }, { transform: 'translateY(0)' }], { duration:300, easing:'ease-out' });
+  });
 }
 
-.wrap{width:100%;max-width:520px}
-.card{
-  background:var(--card);padding:20px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:18px;
+// clicking main "Da" opens confirm modal
+if (yesMain) yesMain.addEventListener('click', ()=>{
+  showConfirm();
+});
+
+// confirm modal behavior
+function showConfirm(){
+  if (!confirmModal) return;
+  confirmModal.classList.remove('hidden');
+  confirmModal.setAttribute('aria-hidden','false');
 }
-.center{text-align:center}
-.lead{color:var(--muted);margin-top:8px}
-
-/* buttons */
-.btn{
-  padding:12px 20px;border-radius:999px;border:0;cursor:pointer;font-weight:600;background:#eef2ff;color:#1a1a1a;
-  transition:transform .18s ease, box-shadow .18s ease;
-  margin:8px;
+function hideConfirm(){
+  if (!confirmModal) return;
+  confirmModal.classList.add('hidden');
+  confirmModal.setAttribute('aria-hidden','true');
 }
-.btn:active{transform:scale(.98)}
-.btn.primary{background:linear-gradient(90deg,var(--accent),#ff7a8c);color:white;box-shadow:0 8px 24px rgba(255,77,109,0.18)}
-.btn.yes{background:linear-gradient(90deg,#7ce0a7,#3fd08a); color:white}
-.btn.no{background:linear-gradient(90deg,#e0e6f3,#cfd8f3); color:#1b2650}
 
-/* hidden */
-.hidden{display:none}
+if (confirmNo) confirmNo.addEventListener('click', ()=>{
+  // if she chooses "Nu" at confirm, we hide modal and make "Da" grow and bring back proposal
+  hideConfirm();
+  yesScale += 0.18;
+  if (yesMain) yesMain.style.transform = `translateY(0) scale(${yesScale})`;
+  // small nudge animation
+  if (yesMain) yesMain.animate([{ transform: `scale(${yesScale})` }, { transform: `scale(${yesScale + 0.12})` }, { transform: `scale(${yesScale})` }], { duration: 360, easing: 'ease-out' });
+});
 
-/* choices layout */
-.choices{display:flex;gap:16px;justify-content:center;margin-top:12px}
-.slider-wrap{display:flex;align-items:center;gap:12px;flex-direction:column}
-#loveRange{width:100%}
-.percent{font-weight:700;color:var(--accent);margin-top:6px}
+if (confirmYes) confirmYes.addEventListener('click', ()=>{
+  // final acceptance -> go to final page
+  hideConfirm();
+  goToFinal();
+});
 
-/* proposal button positioning so "Nu" can move */
-.proposal-wrap{position:relative;height:140px;display:flex;align-items:center;justify-content:center;gap:36px}
-.proposal-wrap .btn{position:relative}
-
-/* modal */
-.modal{
-  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.28);z-index:40;
+// final sequence
+function goToFinal(){
+  goToStep('final');
+  fireConfetti();
 }
-.modal-card{background:white;padding:18px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.18);text-align:center}
-.modal-actions{display:flex;gap:12px;justify-content:center;margin-top:12px}
 
-/* final title */
-#finalTitle{font-size:2rem;color:var(--accent);margin:6px 0}
+// replay
+if(finalReplay) finalReplay.addEventListener('click', ()=> location.reload() );
 
-/* confetti pieces */
-.confetti{position:fixed; width:10px; height:14px; opacity:0.95; pointer-events:none; z-index:60; border-radius:2px}
+/* Simple confetti (no libs) */
+function fireConfetti(){
+  const colors = ['#ff4d6d','#ffd166','#73d6b7','#7cc6ff','#c59bff'];
+  const count = 60;
+  for(let i=0;i<count;i++){
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.left = (Math.random()*100) + 'vw';
+    el.style.top = (-10 - Math.random()*20) + 'vh';
+    el.style.opacity = 0.95;
+    el.style.transform = `rotate(${Math.random()*360}deg)`;
+    el.style.width = (6 + Math.random()*10) + 'px';
+    el.style.height = (8 + Math.random()*12) + 'px';
+    document.body.appendChild(el);
 
-/* small hint */
-.hint{color:var(--muted);margin-top:8px;font-size:.95rem}
+    const fallDuration = 1400 + Math.random()*1200;
+    el.style.transition = `transform ${fallDuration}ms linear, opacity 600ms ${Math.max(0, fallDuration-600)}ms`;
+    void el.offsetHeight;
+    el.style.transform = `translateY(${window.innerHeight + 200}px) rotate(${Math.random()*720}deg)`;
+    el.style.opacity = 0;
 
-/* responsive */
-@media (max-width:420px){
-  .proposal-wrap{height:120px;gap:10px}
-  .btn{padding:10px 14px}
+    setTimeout(()=> el.remove(), fallDuration + 800);
+  }
 }
